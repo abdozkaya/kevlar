@@ -33,10 +33,7 @@ Unlike basic scripts, Kevlar includes **Smart Swap creation**, **Centralized Con
 Run the following command:
 
 ```bash
-git clone https://github.com/abdozkaya/kevlar.git
-cd kevlar
-chmod +x kevlar.sh
-./kevlar.sh
+wget -qO kevlar.sh https://raw.githubusercontent.com/abdozkaya/kevlar/main/kevlar.sh && chmod +x kevlar.sh && ./kevlar.sh
 ```
 ---
 
