@@ -3,7 +3,7 @@
 # ==============================================================================
 # PROJECT: KEVLAR - Production Ready VPS Hardening
 # VERSION: 1.0.0
-# AUTHOR:  ozkayabd
+# AUTHOR:  abdozkaya
 # LICENSE: MIT
 # TARGET:  Ubuntu 20.04+, Debian 11+
 # ==============================================================================
