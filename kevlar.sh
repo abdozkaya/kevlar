@@ -8,18 +8,18 @@
 # TARGET:  Ubuntu 20.04+, Debian 11+
 # ==============================================================================
 
-# --- CONFIGURATION VARIABLES ---
+# --- CONFIGURATION ---
 APP_NAME="KEVLAR"
 BACKUP_DIR="/root/kevlar_backups_$(date +%F_%T)"
 LOG_FILE="/var/log/kevlar_install.log"
 
-# --- COLORS ---
+# --- COLORS (Fixed) ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\133[1;33m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
 # --- HELPER FUNCTIONS ---
 log_info() { echo -e "${BLUE}[INFO]${NC} $1" | tee -a "$LOG_FILE"; }
@@ -37,15 +37,14 @@ backup_file() {
 
 # --- ROOT CHECK ---
 if [[ $EUID -ne 0 ]]; then
-   log_error "Please run as root (sudo)."
+   log_error "Critical: This script requires root privileges."
    exit 1
 fi
 
-# --- BANNER ---
+# --- BANNER & INTRO ---
 clear
 echo -e "${CYAN}"
 cat << "EOF"
-
  __  ___  ___________    ____  __          ___      .______      
 |  |/  / |   ____\   \  /   / |  |        /   \     |   _  \     
 |  '  /  |  |__   \   \/   /  |  |       /  ^  \    |  |_)  |    
@@ -55,12 +54,14 @@ cat << "EOF"
                                               
 EOF
 echo -e "${NC}"
-echo -e "   ${APP_NAME} > Production Server Hardening Utility"
-echo -e "   --------------------------------------------"
+echo -e "${YELLOW}>>> WELCOME TO KEVLAR.${NC}"
+echo -e "Your server is currently naked in a warzone."
+echo -e "Let's suit it up with military-grade armor. Right now."
+echo -e "---------------------------------------------------------"
 
-# --- INITIAL INPUT ---
+# --- INITIAL SETUP ---
 echo ""
-log_info "Initialization..."
+log_info "Initializing Setup Wizard..."
 
 # 1. User
 read -p "1. New Sudo Username [admin]: " SYS_USER
@@ -72,7 +73,7 @@ while true; do
     read -s -p "   Confirm Password: " SYS_PASS_CONFIRM
     echo ""
     [ "$SYS_PASS" = "$SYS_PASS_CONFIRM" ] && break
-    log_error "Passwords match failed. Try again."
+    log_error "Passwords do not match. Try again."
 done
 
 # 2. Port
@@ -87,24 +88,46 @@ read -p "   Key: " USER_SSH_KEY
 
 # --- MODE SELECTION ---
 echo ""
-echo -e "${YELLOW}Select Mode:${NC}"
-echo -e "   [1] ${GREEN}AUTO${NC} (Recommended - Fast)"
-echo -e "   [2] ${CYAN}MANUAL${NC} (Ask for each step)"
+echo -e "${YELLOW}Select Execution Mode:${NC}"
+echo -e "   [1] ${GREEN}AUTO${NC}   (Install everything, ask nothing)"
+echo -e "   [2] ${CYAN}MANUAL${NC} (Decide step-by-step with Help support)"
 read -p "Choice [1]: " MODE
 MODE=${MODE:-1}
 
-# --- EXECUTION ENGINE ---
+# --- EXECUTION ENGINE (Smart Logic) ---
 run_task() {
     local func=$1
-    local desc=$2
+    local title=$2
+    local help_text=$3
     
     if [[ "$MODE" == "2" ]]; then
-        echo ""
-        read -p "Run: $desc? (y/n): " choice
-        [[ "$choice" =~ ^[Yy]$ ]] && $func || log_warn "Skipped: $desc"
+        while true; do
+            echo ""
+            echo -e "${CYAN}>>> TASK: ${NC}$title"
+            read -p "    Execute? (y/n/h): " choice
+            case "$choice" in
+                y|Y) 
+                    $func 
+                    break 
+                    ;;
+                n|N) 
+                    log_warn "Skipped: $title" 
+                    break 
+                    ;;
+                h|H) 
+                    echo -e "${YELLOW}??? WHY IS THIS NEEDED? ???${NC}"
+                    echo -e "$help_text"
+                    echo -e "---------------------------"
+                    ;;
+                *) 
+                    echo "Invalid key. Use 'y', 'n' or 'h'." 
+                    ;;
+            esac
+        done
     else
+        # Auto Mode
         echo ""
-        log_info "Running: $desc"
+        log_info "Running: $title"
         $func
     fi
 }
@@ -112,36 +135,41 @@ run_task() {
 # --- TASKS ---
 
 task_update() {
-    apt-get update -qq && apt-get upgrade -y -qq
-    apt-get install -y -qq ufw fail2ban auditd rkhunter curl vim sudo unattended-upgrades net-tools systemd-timesyncd
-    log_success "System updated & Tools installed."
+    log_info "Updating package lists..."
+    apt-get update -qq 
+    log_info "Upgrading existing packages..."
+    apt-get upgrade -y -qq
+    # Install only base essentials required for the script to run
+    apt-get install -y -qq curl vim sudo net-tools
+    log_success "System updated & Base tools installed."
 }
 
 task_time() {
+    apt-get install -y -qq systemd-timesyncd
     timedatectl set-ntp on
     timedatectl set-timezone UTC
     log_success "Timezone set to UTC & NTP synced."
 }
 
 task_swap() {
-    # Check RAM. If < 2GB and no swap, create 1GB swap.
     local ram=$(free -m | awk '/^Mem:/{print $2}')
     if [[ "$ram" -lt 2048 ]] && [[ -z $(swapon --show) ]]; then
+        log_info "RAM is low ($ram MB). Creating Swap..."
         fallocate -l 1G /swapfile
         chmod 600 /swapfile
         mkswap /swapfile
         swapon /swapfile
         echo '/swapfile none swap sw 0 0' >> /etc/fstab
-        log_success "Created 1GB Swap File (Low RAM detected)."
+        log_success "1GB Swap created."
     else
-        log_success "Swap check passed."
+        log_success "Swap not needed or already exists."
     fi
 }
 
 task_cleanup() {
     apt-get purge -y telnet rsh-client rsh-server talk yp-tools xinetd tftp-hpa vsftpd wu-ftpd > /dev/null 2>&1
     apt-get autoremove -y > /dev/null 2>&1
-    log_success "Insecure packages removed."
+    log_success "Insecure packages (Telnet/FTP etc.) purged."
 }
 
 task_user() {
@@ -150,6 +178,8 @@ task_user() {
         echo "$SYS_USER:$SYS_PASS" | chpasswd
         usermod -aG sudo "$SYS_USER"
         log_success "User $SYS_USER created."
+    else
+        log_warn "User $SYS_USER already exists."
     fi
     chmod 750 /home/$SYS_USER
     passwd -l root > /dev/null 2>&1
@@ -168,12 +198,11 @@ task_ssh() {
     local cfg="/etc/ssh/sshd_config"
     backup_file "$cfg"
     
-    # Base Config
+    # Configs
     sed -i "s/#Port 22/Port $SSH_PORT/" $cfg
     sed -i "s/Port 22/Port $SSH_PORT/" $cfg
     if ! grep -q "^Protocol 2" $cfg; then echo "Protocol 2" >> $cfg; fi
     
-    # Hardening
     sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' $cfg
     sed -i 's/PermitRootLogin yes/PermitRootLogin no/' $cfg
     sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin no/' $cfg
@@ -181,17 +210,19 @@ task_ssh() {
     sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' $cfg
     sed -i 's/#Banner none/Banner \/etc\/issue.net/' $cfg
     
-    # Key Logic
     if [[ -n "$USER_SSH_KEY" ]]; then
         sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' $cfg
         sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' $cfg
     fi
 
-    echo "NOTICE: Authorized Access Only." > /etc/issue.net
+    echo "WARNING: Authorized access only. All activity is logged." > /etc/issue.net
     log_success "SSH Hardened (Port: $SSH_PORT)."
 }
 
 task_firewall() {
+    log_info "Installing UFW..."
+    apt-get install -y -qq ufw
+    
     ufw --force reset > /dev/null
     ufw default deny incoming
     ufw default allow outgoing
@@ -199,10 +230,13 @@ task_firewall() {
     ufw allow 80/tcp
     ufw allow 443/tcp
     echo "y" | ufw enable
-    log_success "Firewall (UFW) enabled."
+    log_success "Firewall (UFW) installed & enabled."
 }
 
 task_fail2ban() {
+    log_info "Installing Fail2Ban..."
+    apt-get install -y -qq fail2ban
+    
     cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
     sed -i "s/port = ssh/port = $SSH_PORT/" /etc/fail2ban/jail.local
     cat <<EOF >> /etc/fail2ban/jail.local
@@ -216,7 +250,14 @@ bantime = 3600
 EOF
     systemctl restart fail2ban
     systemctl enable fail2ban
-    log_success "Fail2Ban active."
+    log_success "Fail2Ban installed & protection active."
+}
+
+task_audit() {
+    log_info "Installing Auditd & Rkhunter..."
+    apt-get install -y -qq auditd audispd-plugins rkhunter
+    rkhunter --propupd > /dev/null 2>&1
+    log_success "Audit tools installed."
 }
 
 task_network() {
@@ -233,6 +274,14 @@ EOF
     log_success "Kernel Network Stack hardened."
 }
 
+task_autoupdate() {
+    log_info "Installing Unattended Upgrades..."
+    apt-get install -y -qq unattended-upgrades apt-listchanges
+    echo 'APT::Periodic::Update-Package-Lists "1";' > /etc/apt/apt.conf.d/20auto-upgrades
+    echo 'APT::Periodic::Unattended-Upgrade "1";' >> /etc/apt/apt.conf.d/20auto-upgrades
+    log_success "Auto-security updates enabled."
+}
+
 task_shm() {
     if ! grep -q "/dev/shm" /etc/fstab; then
         echo "tmpfs /dev/shm tmpfs defaults,noexec,nosuid 0 0" >> /etc/fstab
@@ -241,31 +290,70 @@ task_shm() {
     fi
 }
 
-# --- RUNNER ---
-run_task task_update    "System Update & Tools"
-run_task task_time      "NTP Time Sync"
-run_task task_swap      "Smart Swap Creation"
-run_task task_cleanup   "Remove Bloatware"
-run_task task_user      "User Setup & Keys"
-run_task task_ssh       "SSH Configuration"
-run_task task_firewall  "Firewall Setup"
-run_task task_fail2ban  "Fail2Ban Protection"
-run_task task_network   "Network Hardening"
-run_task task_shm       "Secure Shared Memory"
+# --- RUNNER LOOP ---
 
+run_task task_update \
+    "System Update & Base Tools" \
+    "Updates all packages to latest versions and installs basic tools (curl, vim). ESSENTIAL."
+
+run_task task_time \
+    "NTP Time Sync" \
+    "Syncs server time with global standards (UTC). Crucial for correct logs and 2FA."
+
+run_task task_swap \
+    "Smart Swap Creation" \
+    "Checks RAM. If <2GB, creates a 1GB Swap file. Prevents crashes during updates."
+
+run_task task_cleanup \
+    "Remove Bloatware" \
+    "Removes insecure legacy protocols (Telnet, FTP, etc.) that hackers love to exploit."
+
+run_task task_user \
+    "User Setup & Lock Root" \
+    "Creates your new admin user and LOCKS the Root account to prevent direct attacks."
+
+run_task task_ssh \
+    "SSH Hardening" \
+    "Changes SSH Port ($SSH_PORT), blocks Root login, and restricts auth attempts."
+
+run_task task_firewall \
+    "Firewall Setup (UFW)" \
+    "Installs UFW. Blocks ALL incoming traffic except SSH, HTTP, and HTTPS."
+
+run_task task_fail2ban \
+    "Fail2Ban Protection" \
+    "Installs Fail2Ban. Automatically bans IPs that try to guess your password."
+
+run_task task_audit \
+    "Audit & Rootkit Hunter" \
+    "Installs tools to monitor system changes and scan for hidden viruses/rootkits."
+
+run_task task_network \
+    "Network Stack Hardening" \
+    "Modifies Kernel settings to block IP Spoofing, SYN Floods, and other network attacks."
+
+run_task task_autoupdate \
+    "Auto-Security Updates" \
+    "Automatically installs critical security patches without your intervention."
+
+run_task task_shm \
+    "Secure Shared Memory" \
+    "Prevents hackers from running malicious scripts in the RAM (/dev/shm)."
+
+
+# --- COMPLETION ---
 systemctl restart ssh
 
-# --- FINISH ---
 echo ""
 echo -e "${GREEN}==========================================${NC}"
-echo -e "   KEVLAR PROTECTION ENABLED"
+echo -e "   MISSION ACCOMPLISHED. SYSTEM SECURED."
 echo -e "${GREEN}==========================================${NC}"
 echo -e " User: ${YELLOW}$SYS_USER${NC}"
 echo -e " Port: ${YELLOW}$SSH_PORT${NC}"
 if [[ -n "$USER_SSH_KEY" ]]; then
     echo -e " Auth: ${GREEN}SSH KEY ONLY${NC}"
 else
-    echo -e " Auth: ${RED}PASSWORD${NC} (Add key later!)"
+    echo -e " Auth: ${RED}PASSWORD${NC} (Warning: Add a key soon!)"
 fi
 echo -e "------------------------------------------"
 echo -e "${RED}IMPORTANT:${NC} Do NOT close this session yet."
