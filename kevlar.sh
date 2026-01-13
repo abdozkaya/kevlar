@@ -7,13 +7,16 @@
 # LICENSE: MIT
 # TARGET:  Ubuntu 20.04+, Debian 11+
 # ==============================================================================
-
 # --- CONFIGURATION ---
 APP_NAME="KEVLAR"
 BACKUP_DIR="/root/kevlar_backups_$(date +%F_%T)"
 LOG_FILE="/var/log/kevlar_install.log"
 
-# --- COLORS (Fixed) ---
+# --- TRACKING ARRAYS ---
+EXECUTED_TASKS=()
+SKIPPED_TASKS=()
+
+# --- COLORS ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -45,6 +48,7 @@ fi
 clear
 echo -e "${CYAN}"
 cat << "EOF"
+
  __  ___  ___________    ____  __          ___      .______      
 |  |/  / |   ____\   \  /   / |  |        /   \     |   _  \     
 |  '  /  |  |__   \   \/   /  |  |       /  ^  \    |  |_)  |    
@@ -94,7 +98,7 @@ echo -e "   [2] ${CYAN}MANUAL${NC} (Decide step-by-step with Help support)"
 read -p "Choice [1]: " MODE
 MODE=${MODE:-1}
 
-# --- EXECUTION ENGINE (Smart Logic) ---
+# --- EXECUTION ENGINE ---
 run_task() {
     local func=$1
     local title=$2
@@ -107,11 +111,13 @@ run_task() {
             read -p "    Execute? (y/n/h): " choice
             case "$choice" in
                 y|Y) 
-                    $func 
+                    $func
+                    EXECUTED_TASKS+=("$title")
                     break 
                     ;;
                 n|N) 
-                    log_warn "Skipped: $title" 
+                    log_warn "Skipped: $title"
+                    SKIPPED_TASKS+=("$title")
                     break 
                     ;;
                 h|H) 
@@ -125,10 +131,10 @@ run_task() {
             esac
         done
     else
-        # Auto Mode
         echo ""
         log_info "Running: $title"
         $func
+        EXECUTED_TASKS+=("$title")
     fi
 }
 
@@ -139,7 +145,6 @@ task_update() {
     apt-get update -qq 
     log_info "Upgrading existing packages..."
     apt-get upgrade -y -qq
-    # Install only base essentials required for the script to run
     apt-get install -y -qq curl vim sudo net-tools
     log_success "System updated & Base tools installed."
 }
@@ -169,7 +174,7 @@ task_swap() {
 task_cleanup() {
     apt-get purge -y telnet rsh-client rsh-server talk yp-tools xinetd tftp-hpa vsftpd wu-ftpd > /dev/null 2>&1
     apt-get autoremove -y > /dev/null 2>&1
-    log_success "Insecure packages (Telnet/FTP etc.) purged."
+    log_success "Insecure packages purged."
 }
 
 task_user() {
@@ -198,7 +203,6 @@ task_ssh() {
     local cfg="/etc/ssh/sshd_config"
     backup_file "$cfg"
     
-    # Configs
     sed -i "s/#Port 22/Port $SSH_PORT/" $cfg
     sed -i "s/Port 22/Port $SSH_PORT/" $cfg
     if ! grep -q "^Protocol 2" $cfg; then echo "Protocol 2" >> $cfg; fi
@@ -341,13 +345,32 @@ run_task task_shm \
     "Prevents hackers from running malicious scripts in the RAM (/dev/shm)."
 
 
-# --- COMPLETION ---
+# --- COMPLETION & REPORT ---
 systemctl restart ssh
 
 echo ""
 echo -e "${GREEN}==========================================${NC}"
 echo -e "   MISSION ACCOMPLISHED. SYSTEM SECURED."
 echo -e "${GREEN}==========================================${NC}"
+
+# REPORTING SECTION
+echo -e "${CYAN}--- EXECUTION REPORT ---${NC}"
+if [ ${#EXECUTED_TASKS[@]} -gt 0 ]; then
+    for task in "${EXECUTED_TASKS[@]}"; do
+        echo -e "[${GREEN}✓${NC}] $task"
+    done
+fi
+
+if [ ${#SKIPPED_TASKS[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}--- SKIPPED TASKS ---${NC}"
+    for task in "${SKIPPED_TASKS[@]}"; do
+        echo -e "[${RED}✗${NC}] $task"
+    done
+fi
+echo -e "------------------------------------------"
+
+# FINAL INFO
 echo -e " User: ${YELLOW}$SYS_USER${NC}"
 echo -e " Port: ${YELLOW}$SSH_PORT${NC}"
 if [[ -n "$USER_SSH_KEY" ]]; then
@@ -358,5 +381,16 @@ fi
 echo -e "------------------------------------------"
 echo -e "${RED}IMPORTANT:${NC} Do NOT close this session yet."
 echo -e "Test connection in a NEW terminal:"
-echo -e "${CYAN}ssh -p $SSH_PORT $SYS_USER@$(curl -s ifconfig.me)${NC}"
+echo ""
+
+# DYNAMIC BOX GENERATOR
+HOST_IP=$(curl -s ifconfig.me)
+CONNECT_CMD="ssh -p $SSH_PORT $SYS_USER@$HOST_IP"
+BOX_WIDTH=$((${#CONNECT_CMD} + 4))
+BORDER=$(printf '%*s' "$BOX_WIDTH" | tr ' ' '=')
+
+echo -e "${CYAN}+${BORDER}+${NC}"
+echo -e "${CYAN}|  $CONNECT_CMD  |${NC}"
+echo -e "${CYAN}+${BORDER}+${NC}"
+echo ""
 echo -e "=========================================="
