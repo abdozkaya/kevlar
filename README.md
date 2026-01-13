@@ -4,6 +4,8 @@
 
 > **"Turn your fresh Linux VPS into a fortress in less than 2 minutes."**
 
+![Kevlar Screenshot](screenshot.png)
+
 **Kevlar** is an advanced, production-ready Bash script designed to automate the security hardening process of Ubuntu and Debian servers. It transforms a default, vulnerable installation into a secure, stable, and production-ready environment using industry best practices.
 
 Unlike basic scripts, Kevlar includes **Smart Swap creation**, **Centralized Configuration Backups**, **NTP Time Sync**, and **SSH Key Injection**.
