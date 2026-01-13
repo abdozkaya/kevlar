@@ -45,24 +45,13 @@ fi
 clear
 echo -e "${CYAN}"
 cat << "EOF"
-                                                                                                                                                  
-                                                                                                                                                  
-KKKKKKKKK    KKKKKKKEEEEEEEEEEEEEEEEEEEEEEVVVVVVVV           VVVVVVVVLLLLLLLLLLL                            AAA               RRRRRRRRRRRRRRRRR   
-K:::::::K    K:::::KE::::::::::::::::::::EV::::::V           V::::::VL:::::::::L                           A:::A              R::::::::::::::::R  
-K:::::::K    K:::::KE::::::::::::::::::::EV::::::V           V::::::VL:::::::::L                          A:::::A             R::::::RRRRRR:::::R 
-K:::::::K   K::::::KEE::::::EEEEEEEEE::::EV::::::V           V::::::VLL:::::::LL                         A:::::::A            RR:::::R     R:::::R
-KK::::::K  K:::::KKK  E:::::E       EEEEEE V:::::V           V:::::V   L:::::L                          A:::::::::A             R::::R     R:::::R
-  K:::::K K:::::K     E:::::E               V:::::V         V:::::V    L:::::L                         A:::::A:::::A            R::::R     R:::::R
-  K::::::K:::::K      E::::::EEEEEEEEEE      V:::::V       V:::::V     L:::::L                        A:::::A A:::::A           R::::RRRRRR:::::R 
-  K:::::::::::K       E:::::::::::::::E       V:::::V     V:::::V      L:::::L                       A:::::A   A:::::A          R:::::::::::::RR  
-  K:::::::::::K       E:::::::::::::::E        V:::::V   V:::::V       L:::::L                      A:::::A     A:::::A         R::::RRRRRR:::::R 
-  K::::::K:::::K      E::::::EEEEEEEEEE         V:::::V V:::::V        L:::::L                     A:::::AAAAAAAAA:::::A        R::::R     R:::::R
-  K:::::K K:::::K     E:::::E                    V:::::V:::::V         L:::::L                    A:::::::::::::::::::::A       R::::R     R:::::R
-KK::::::K  K:::::KKK  E:::::E       EEEEEE        V:::::::::V          L:::::L         LLLLLL    A:::::AAAAAAAAAAAAA:::::A      R::::R     R:::::R
-K:::::::K   K::::::KEE::::::EEEEEEEE:::::E         V:::::::V         LL:::::::LLLLLLLLL:::::L   A:::::A             A:::::A   RR:::::R     R:::::R
-K:::::::K    K:::::KE::::::::::::::::::::E          V:::::V          L::::::::::::::::::::::L  A:::::A               A:::::A  R::::::R     R:::::R
-K:::::::K    K:::::KE::::::::::::::::::::E           V:::V           L::::::::::::::::::::::L A:::::A                 A:::::A R::::::R     R:::::R
-KKKKKKKKK    KKKKKKKEEEEEEEEEEEEEEEEEEEEEE            VVV            LLLLLLLLLLLLLLLLLLLLLLLLAAAAAAA                   AAAAAAARRRRRRRR     RRRRRRR
+
+ __  ___  ___________    ____  __          ___      .______      
+|  |/  / |   ____\   \  /   / |  |        /   \     |   _  \     
+|  '  /  |  |__   \   \/   /  |  |       /  ^  \    |  |_)  |    
+|    <   |   __|   \      /   |  |      /  /_\  \   |      /     
+|  .  \  |  |____   \    /    |  `----./  _____  \  |  |\  \----.
+|__|\__\ |_______|   \__/     |_______/__/     \__\ | _| `._____|
                                               
 EOF
 echo -e "${NC}"
